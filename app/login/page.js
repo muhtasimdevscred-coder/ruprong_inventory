@@ -1,0 +1,63 @@
+"use client";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+
+function LoginForm() {
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const params = useSearchParams();
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      if (res.ok) {
+        const next = params.get("next") || "/inventory";
+        router.push(next);
+        router.refresh();
+      } else {
+        setError("Wrong password. Try again.");
+      }
+    } catch {
+      setError("Something went wrong. Try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="login-wrap">
+      <form className="login-box" onSubmit={handleSubmit}>
+        <h1>RupRong Inventory</h1>
+        <p>Enter the shop password to continue</p>
+        {error && <div className="msg msg-error">{error}</div>}
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoFocus
+        />
+        <button type="submit" className="btn btn-primary" disabled={loading}>
+          {loading ? "Checking..." : "Log In"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  );
+}
