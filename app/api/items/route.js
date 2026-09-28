@@ -14,23 +14,27 @@ export async function generateSku() {
 }
 
 export async function renumberSkus() {
-  const { rows: items } = await sql`SELECT id, sku FROM items ORDER BY id`;
-  const groups = {};
-  for (const item of items) {
-    if (!item.sku) continue;
-    const match = item.sku.match(/^([A-Za-z]+)(\d+)$/);
-    if (!match) continue;
-    const [, prefix, num] = match;
-    if (!groups[prefix]) groups[prefix] = [];
-    groups[prefix].push({ id: item.id, num: parseInt(num, 10) });
-  }
-  for (const [prefix, itemsInGroup] of Object.entries(groups)) {
-    itemsInGroup.sort((a, b) => a.num - b.num);
-    for (let i = 0; i < itemsInGroup.length; i++) {
-      const newSku = `${prefix}${i + 1}`;
-      await sql`UPDATE items SET sku = ${newSku} WHERE id = ${itemsInGroup[i].id}`;
+  await withTransaction(async (client) => {
+    const { rows: items } = await client.query("SELECT id, sku FROM items ORDER BY id");
+    const groups = {};
+    for (const item of items) {
+      if (!item.sku) continue;
+      const match = item.sku.match(/^([A-Za-z]+)(\d+)$/);
+      if (!match) continue;
+      const prefix = match[1];
+      const num = parseInt(match[2], 10);
+      if (!groups[prefix]) groups[prefix] = [];
+      groups[prefix].push({ id: item.id, num });
     }
-  }
+    for (const prefix of Object.keys(groups)) {
+      const itemsInGroup = groups[prefix];
+      itemsInGroup.sort((a, b) => a.num - b.num);
+      for (let i = 0; i < itemsInGroup.length; i++) {
+        const newSku = `${prefix}${i + 1}`;
+        await client.query("UPDATE items SET sku = $1 WHERE id = $2", [newSku, itemsInGroup[i].id]);
+      }
+    }
+  });
 }
 
 export async function GET(request) {
