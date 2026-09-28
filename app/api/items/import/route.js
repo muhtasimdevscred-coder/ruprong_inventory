@@ -7,8 +7,8 @@ import { migrate } from "../../../../lib/migrate";
 
 // Accepts { csv: "<raw csv text>" } or { excel: "<base64 xlsx data>" }.
 // Expected columns (case-insensitive, extra/missing optional columns are fine):
-//   Name, Category, Quantity, Selling Price, Cost Price, Notes
-// SKU column is ignored — all products get serial SKU numbers (RR-0001, RR-0002, etc.)
+//   SKU, Name, Category, Quantity, Selling Price, Cost Price, Notes
+// If SKU is provided, it's used; otherwise a serial SKU (RR-0001, RR-0002, etc.) is assigned.
 export async function POST(request) {
   await migrate();
 
@@ -83,8 +83,11 @@ export async function POST(request) {
         continue;
       }
 
-      skuCounter++;
-      const sku = `RR-${String(skuCounter).padStart(4, "0")}`;
+      let sku = (norm(row, ["sku"]) || "").trim();
+      if (!sku) {
+        skuCounter++;
+        sku = `RR-${String(skuCounter).padStart(4, "0")}`;
+      }
 
       const category = (norm(row, ["category"]) || "").trim() || null;
       const quantity = parseInt(norm(row, ["quantity"]), 10) || 0;
