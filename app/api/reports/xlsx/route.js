@@ -12,7 +12,7 @@ export async function GET(request) {
     return new Response("start and end are required", { status: 400 });
   }
   const summary = await getReportSummary(start, end);
-  const { totals, byInvoice, byProduct } = summary;
+  const { totals, byInvoice, byProduct, unsold } = summary;
 
   const wb = new ExcelJS.Workbook();
 
@@ -60,6 +60,19 @@ export async function GET(request) {
     wsProd.addRow([r.description, r.qty, r.revenue, r.cost, r.profit]);
   });
   wsProd.columns.forEach((c, i) => { c.width = [34, 12, 14, 14, 14][i] || 14; });
+
+  const wsUnsold = wb.addWorksheet("Unsold Inventory");
+  wsUnsold.addRow(["SKU", "Name", "Category", "In Stock", "Sold (Period)", "Unit Price", "Unit Cost", "Retail Value", "Cost Value", "Profit Potential"]);
+  wsUnsold.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+  wsUnsold.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF8A6A45" } };
+  unsold.items.forEach((r) => {
+    wsUnsold.addRow([r.sku, r.name, r.category, r.qty, r.sold_in_period, r.unit_price, r.unit_cost, r.retail_value, r.cost_value, r.profit_potential]);
+  });
+  wsUnsold.columns.forEach((c, i) => { c.width = [12, 22, 14, 10, 14, 12, 12, 14, 14, 14][i] || 14; });
+
+  // Unsold totals row
+  const totalRow = wsUnsold.addRow(["TOTAL", "", "", unsold.totalQty, "", "", "", unsold.retailValue, unsold.costValue, unsold.profitPotential]);
+  totalRow.font = { bold: true };
 
   const buffer = await wb.xlsx.writeBuffer();
 

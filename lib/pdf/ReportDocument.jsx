@@ -46,8 +46,19 @@ const prodCols = [
   { key: "profit", label: "Profit", w: "15%", num: true },
 ];
 
+const unsoldCols = [
+  { key: "sku", label: "SKU", w: "12%" },
+  { key: "name", label: "Name", w: "20%" },
+  { key: "category", label: "Category", w: "12%" },
+  { key: "qty", label: "In Stock", w: "10%", num: true },
+  { key: "sold_in_period", label: "Sold (Period)", w: "12%", num: true },
+  { key: "retail_value", label: "Retail Value", w: "12%", num: true },
+  { key: "cost_value", label: "Cost Value", w: "11%", num: true },
+  { key: "profit_potential", label: "Profit Potential", w: "11%", num: true },
+];
+
 export default function ReportDocument({ start, end, summary }) {
-  const { totals, byInvoice, byProduct } = summary;
+  const { totals, byInvoice, byProduct, unsold } = summary;
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -116,6 +127,33 @@ export default function ReportDocument({ start, end, summary }) {
             ))}
           </View>
         ))}
+
+        <Text style={styles.sectionLabel}>Unsold Inventory</Text>
+        <View style={styles.tHeadRow}>
+          {unsoldCols.map((c) => (
+            <Text key={c.key} style={[styles.tHeadCell, { width: c.w, textAlign: c.num ? "right" : "left" }]}>
+              {c.label}
+            </Text>
+          ))}
+        </View>
+        {unsold.items.length === 0 && <Text style={{ padding: 6, fontSize: 9 }}>No unsold inventory.</Text>}
+        {unsold.items.map((row, i) => (
+          <View style={[styles.tRow, i % 2 === 1 ? styles.tRowAlt : {}]} key={row.sku}>
+            {unsoldCols.map((c) => (
+              <Text key={c.key} style={{ width: c.w, textAlign: c.num ? "right" : "left" }}>
+                {c.num ? money(row[c.key]) : String(row[c.key] || "")}
+              </Text>
+            ))}
+          </View>
+        ))}
+
+        <View style={[styles.tHeadRow, { marginTop: 8 }]}>
+          <Text style={[styles.tHeadCell, { width: "44%" }]}>Unsold Totals</Text>
+          <Text style={[styles.tHeadCell, { width: "10%", textAlign: "right" }]}>{unsold.totalQty}</Text>
+          <Text style={[styles.tHeadCell, { width: "12%", textAlign: "right" }]}>{money(unsold.retailValue)}</Text>
+          <Text style={[styles.tHeadCell, { width: "11%", textAlign: "right" }]}>{money(unsold.costValue)}</Text>
+          <Text style={[styles.tHeadCell, { width: "11%", textAlign: "right" }]}>{money(unsold.profitPotential)}</Text>
+        </View>
       </Page>
     </Document>
   );

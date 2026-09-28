@@ -41,6 +41,7 @@ export default function ReportsPage() {
   }
 
   const t = summary?.totals;
+  const u = summary?.unsold;
 
   return (
     <div>
@@ -125,6 +126,55 @@ export default function ReportsPage() {
                   </tr>
                 ))}
                 {summary.byProduct.length === 0 && <tr><td colSpan={5} className="muted" style={{ textAlign: "center", padding: 16 }}>No sales in this period.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="card">
+            <h2>Unsold Inventory</h2>
+            <p className="muted">Items currently in stock that have not been sold. This shows how much inventory value is still available.</p>
+            <div className="row" style={{ marginBottom: 16 }}>
+              <div className="card" style={{ flex: 1, marginBottom: 0, background: "var(--gold-light)" }}>
+                <p className="muted">Total Unsold Items</p>
+                <p style={{ fontSize: 24, fontWeight: 700, color: "var(--gold)", margin: "4px 0" }}>{u.totalItems}</p>
+              </div>
+              <div className="card" style={{ flex: 1, marginBottom: 0, background: "var(--gold-light)" }}>
+                <p className="muted">Total Unsold Quantity</p>
+                <p style={{ fontSize: 24, fontWeight: 700, color: "var(--gold)", margin: "4px 0" }}>{u.totalQty}</p>
+              </div>
+              <div className="card" style={{ flex: 1, marginBottom: 0, background: "var(--gold-light)" }}>
+                <p className="muted">Cost Value (Unsold)</p>
+                <p style={{ fontSize: 24, fontWeight: 700, color: "var(--gold)", margin: "4px 0" }}>{u.costValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              </div>
+              <div className="card" style={{ flex: 1, marginBottom: 0, background: "var(--gold-light)" }}>
+                <p className="muted">Retail Value (Unsold)</p>
+                <p style={{ fontSize: 24, fontWeight: 700, color: "var(--gold)", margin: "4px 0" }}>{u.retailValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              </div>
+              <div className="card" style={{ flex: 1, marginBottom: 0, background: "var(--gold-light)" }}>
+                <p className="muted">Potential Profit</p>
+                <p style={{ fontSize: 24, fontWeight: 700, color: "var(--gold)", margin: "4px 0" }}>{u.profitPotential.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              </div>
+            </div>
+            <table>
+              <thead>
+                <tr><th>SKU</th><th>Name</th><th>Category</th><th>In Stock</th><th>Sold (Period)</th><th>Unit Price</th><th>Unit Cost</th><th>Retail Value</th><th>Cost Value</th><th>Profit Potential</th></tr>
+              </thead>
+              <tbody>
+                {u.items.map((item) => (
+                  <tr key={item.sku}>
+                    <td>{item.sku}</td>
+                    <td>{item.name}</td>
+                    <td>{item.category}</td>
+                    <td>{item.qty}</td>
+                    <td>{item.sold_in_period}</td>
+                    <td>{item.unit_price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td>{item.unit_cost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td>{item.retail_value.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td>{item.cost_value.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td>{item.profit_potential.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                  </tr>
+                ))}
+                {u.items.length === 0 && <tr><td colSpan={10} className="muted" style={{ textAlign: "center", padding: 16 }}>No unsold inventory.</td></tr>}
               </tbody>
             </table>
           </div>

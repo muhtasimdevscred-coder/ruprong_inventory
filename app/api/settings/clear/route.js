@@ -11,9 +11,11 @@ export async function POST(request) {
     await client.query("DELETE FROM invoice_items");
     await client.query("DELETE FROM invoices");
     await client.query("DELETE FROM items");
+    await client.query("DELETE FROM users");
     await client.query("ALTER SEQUENCE items_id_seq RESTART WITH 1");
     await client.query("ALTER SEQUENCE invoices_id_seq RESTART WITH 1");
     await client.query("ALTER SEQUENCE invoice_items_id_seq RESTART WITH 1");
+    await client.query("ALTER SEQUENCE users_id_seq RESTART WITH 1");
   });
   return NextResponse.json({ ok: true });
 }
