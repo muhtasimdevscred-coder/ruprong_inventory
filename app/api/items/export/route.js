@@ -19,13 +19,12 @@ export async function GET(request) {
     rows = await sql`SELECT * FROM items ORDER BY name`;
   }
 
-  const headers = ["SKU", "Name", "Category", "Quantity", "Selling Price", "Cost Price", "Weight (g)", "Purity", "Stone", "Notes"];
+  const headers = ["SKU", "Name", "Category", "Quantity", "Selling Price", "Cost Price", "Notes"];
   const lines = [headers.join(",")];
   for (const it of rows) {
     lines.push([
       csvEscape(it.sku), csvEscape(it.name), csvEscape(it.category), csvEscape(it.quantity),
-      csvEscape(it.price), csvEscape(it.cost_price), csvEscape(it.weight),
-      csvEscape(it.purity), csvEscape(it.stone), csvEscape(it.notes),
+      csvEscape(it.price), csvEscape(it.cost_price), csvEscape(it.notes),
     ].join(","));
   }
   const csv = "\uFEFF" + lines.join("\r\n") + "\r\n";

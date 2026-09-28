@@ -40,13 +40,12 @@ export async function POST(request) {
   const quantity = Number.isFinite(body.quantity) ? body.quantity : parseInt(body.quantity, 10) || 0;
   const price = Number.isFinite(body.price) ? body.price : parseFloat(body.price) || 0;
   const costPrice = body.cost_price === "" || body.cost_price == null ? null : parseFloat(body.cost_price);
-  const weight = body.weight === "" || body.weight == null ? null : parseFloat(body.weight);
 
   try {
     const rows = await sql`
-      INSERT INTO items (sku, name, category, quantity, price, cost_price, weight, purity, stone, notes, image_url)
+      INSERT INTO items (sku, name, category, quantity, price, cost_price, notes, image_url)
       VALUES (${sku}, ${name}, ${body.category || null}, ${quantity}, ${price}, ${costPrice},
-              ${weight}, ${body.purity || null}, ${body.stone || null}, ${body.notes || null}, ${body.image_url || null})
+              ${body.notes || null}, ${body.image_url || null})
       RETURNING *`;
     return NextResponse.json({ item: rows[0] });
   } catch (err) {

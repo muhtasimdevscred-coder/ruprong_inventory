@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 const CATEGORIES = ["Ring", "Necklace", "Earring", "Bracelet", "Bangle", "Anklet", "Pendant", "Chain", "Set", "Other"];
 const EMPTY_FORM = {
   id: null, sku: "", name: "", category: "", quantity: "0", price: "",
-  cost_price: "", weight: "", purity: "", stone: "", notes: "",
+  cost_price: "", notes: "",
 };
 
 export default function InventoryPage() {
@@ -38,8 +38,7 @@ export default function InventoryPage() {
       sku: form.sku, name: form.name, category: form.category,
       quantity: parseInt(form.quantity, 10) || 0, price: parseFloat(form.price) || 0,
       cost_price: form.cost_price === "" ? null : parseFloat(form.cost_price),
-      weight: form.weight === "" ? null : parseFloat(form.weight),
-      purity: form.purity, stone: form.stone, notes: form.notes,
+      notes: form.notes,
     };
     const isEdit = !!form.id;
     const res = await fetch(isEdit ? `/api/items/${form.id}` : "/api/items", {
@@ -62,8 +61,7 @@ export default function InventoryPage() {
       id: item.id, sku: item.sku, name: item.name, category: item.category || "",
       quantity: String(item.quantity), price: String(item.price),
       cost_price: item.cost_price == null ? "" : String(item.cost_price),
-      weight: item.weight == null ? "" : String(item.weight),
-      purity: item.purity || "", stone: item.stone || "", notes: item.notes || "",
+      notes: item.notes || "",
     });
   }
 
@@ -167,18 +165,6 @@ export default function InventoryPage() {
               <label>Cost Price</label>
               <input type="number" step="0.01" value={form.cost_price} onChange={(e) => setForm({ ...form, cost_price: e.target.value })} />
             </div>
-            <div className="field">
-              <label>Weight (g)</label>
-              <input type="number" step="0.01" value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} style={{ minWidth: 90 }} />
-            </div>
-            <div className="field">
-              <label>Purity / Karat</label>
-              <input value={form.purity} onChange={(e) => setForm({ ...form, purity: e.target.value })} style={{ minWidth: 100 }} />
-            </div>
-            <div className="field">
-              <label>Stone</label>
-              <input value={form.stone} onChange={(e) => setForm({ ...form, stone: e.target.value })} style={{ minWidth: 100 }} />
-            </div>
           </div>
           <div className="row" style={{ marginTop: 10 }}>
             <div className="field" style={{ flex: 1 }}>
@@ -224,7 +210,7 @@ export default function InventoryPage() {
           </div>
         )}
         <p className="muted" style={{ marginTop: 8 }}>
-          CSV/Excel columns: Name, Category, Quantity, Selling Price, Cost Price, Weight (g), Purity, Stone, Notes.
+          CSV/Excel columns: Name, Category, Quantity, Selling Price, Cost Price, Notes.
           All products are assigned serial SKU numbers (RR-0001, RR-0002, etc.) automatically.
         </p>
         <p className="muted">{items.length} item types | {totalUnits} units in stock</p>
@@ -232,7 +218,7 @@ export default function InventoryPage() {
           <thead>
             <tr>
               <th></th><th>SKU</th><th>Name</th><th>Category</th><th>Qty</th>
-              <th>Price</th><th>Cost</th><th>Weight</th><th>Purity</th><th>Stone</th><th></th>
+              <th>Price</th><th>Cost</th><th></th>
             </tr>
           </thead>
           <tbody>
@@ -245,9 +231,6 @@ export default function InventoryPage() {
                 <td>{it.quantity}</td>
                 <td>{Number(it.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                 <td>{it.cost_price != null ? Number(it.cost_price).toLocaleString(undefined, { minimumFractionDigits: 2 }) : ""}</td>
-                <td>{it.weight ?? ""}</td>
-                <td>{it.purity}</td>
-                <td>{it.stone}</td>
                 <td>
                   <button className="btn btn-sm" onClick={() => editRow(it)}>Edit</button>{" "}
                   <button className="btn btn-sm btn-danger" onClick={() => deleteRow(it.id)}>Delete</button>
@@ -255,7 +238,7 @@ export default function InventoryPage() {
               </tr>
             ))}
             {items.length === 0 && (
-              <tr><td colSpan={11} className="muted" style={{ padding: 20, textAlign: "center" }}>No items yet.</td></tr>
+              <tr><td colSpan={8} className="muted" style={{ padding: 20, textAlign: "center" }}>No items yet.</td></tr>
             )}
           </tbody>
         </table>

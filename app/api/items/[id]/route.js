@@ -12,7 +12,6 @@ export async function PUT(request, { params }) {
   const quantity = Number.isFinite(body.quantity) ? body.quantity : parseInt(body.quantity, 10) || 0;
   const price = Number.isFinite(body.price) ? body.price : parseFloat(body.price) || 0;
   const costPrice = body.cost_price === "" || body.cost_price == null ? null : parseFloat(body.cost_price);
-  const weight = body.weight === "" || body.weight == null ? null : parseFloat(body.weight);
   const sku = (body.sku || "").trim();
 
   try {
@@ -20,15 +19,13 @@ export async function PUT(request, { params }) {
     if (sku) {
       rows = await sql`
         UPDATE items SET sku=${sku}, name=${name}, category=${body.category || null}, quantity=${quantity},
-          price=${price}, cost_price=${costPrice}, weight=${weight}, purity=${body.purity || null},
-          stone=${body.stone || null}, notes=${body.notes || null},
+          price=${price}, cost_price=${costPrice}, notes=${body.notes || null},
           image_url = COALESCE(${body.image_url ?? null}, image_url)
         WHERE id=${id} RETURNING *`;
     } else {
       rows = await sql`
         UPDATE items SET name=${name}, category=${body.category || null}, quantity=${quantity},
-          price=${price}, cost_price=${costPrice}, weight=${weight}, purity=${body.purity || null},
-          stone=${body.stone || null}, notes=${body.notes || null},
+          price=${price}, cost_price=${costPrice}, notes=${body.notes || null},
           image_url = COALESCE(${body.image_url ?? null}, image_url)
         WHERE id=${id} RETURNING *`;
     }

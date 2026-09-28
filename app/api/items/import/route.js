@@ -6,7 +6,7 @@ import { generateSku } from "../route";
 
 // Accepts { csv: "<raw csv text>" } or { excel: "<base64 xlsx data>" }.
 // Expected columns (case-insensitive, extra/missing optional columns are fine):
-//   Name, Category, Quantity, Selling Price, Cost Price, Weight (g), Purity, Stone, Notes
+//   Name, Category, Quantity, Selling Price, Cost Price, Notes
 // SKU column is ignored — all products get serial SKU numbers (RR-0001, RR-0002, etc.)
 export async function POST(request) {
   const body = await request.json().catch(() => ({}));
@@ -20,7 +20,6 @@ export async function POST(request) {
   let rows = [];
 
   if (excelBase64) {
-    // Parse Excel file
     try {
       const XLSX = await import("xlsx");
       const buffer = Buffer.from(excelBase64, "base64");
@@ -35,7 +34,6 @@ export async function POST(request) {
       );
     }
   } else {
-    // Parse CSV file
     const parsed = Papa.parse(csvText.trim(), { header: true, skipEmptyLines: true });
     if (parsed.errors && parsed.errors.length) {
       const first = parsed.errors[0];
@@ -60,7 +58,6 @@ export async function POST(request) {
     return undefined;
   };
 
-  // Get the current max SKU number to continue serial numbering
   const existingSkus = await sql`SELECT sku FROM items WHERE sku LIKE 'RR-%'`;
   let maxSkuNum = 0;
   for (const r of existingSkus) {
@@ -75,7 +72,7 @@ export async function POST(request) {
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
-    const rowNum = i + 2; // account for header row, 1-indexed
+    const rowNum = i + 2;
     try {
       const name = (norm(row, ["name"]) || "").trim();
       if (!name) {
@@ -83,7 +80,6 @@ export async function POST(request) {
         continue;
       }
 
-      // Assign serial SKU to every product
       skuCounter++;
       const sku = `RR-${String(skuCounter).padStart(4, "0")}`;
 
@@ -92,15 +88,11 @@ export async function POST(request) {
       const price = parseFloat(norm(row, ["selling price", "price"])) || 0;
       const costRaw = norm(row, ["cost price"]);
       const costPrice = costRaw === undefined || costRaw === "" ? null : parseFloat(costRaw);
-      const weightRaw = norm(row, ["weight (g)", "weight"]);
-      const weight = weightRaw === undefined || weightRaw === "" ? null : parseFloat(weightRaw);
-      const purity = (norm(row, ["purity"]) || "").trim() || null;
-      const stone = (norm(row, ["stone"]) || "").trim() || null;
       const notes = (norm(row, ["notes"]) || "").trim() || null;
 
       await sql`
-        INSERT INTO items (sku, name, category, quantity, price, cost_price, weight, purity, stone, notes)
-        VALUES (${sku}, ${name}, ${category}, ${quantity}, ${price}, ${costPrice}, ${weight}, ${purity}, ${stone}, ${notes})`;
+        INSERT INTO items (sku, name, category, quantity, price, cost_price, notes)
+        VALUES (${sku}, ${name}, ${category}, ${quantity}, ${price}, ${costPrice}, ${notes})`;
       inserted++;
     } catch (err) {
       errors.push({ row: rowNum, message: String(err.message || err).slice(0, 150) });

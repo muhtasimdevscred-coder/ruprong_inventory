@@ -66,7 +66,7 @@ export default function InvoicePage() {
         return;
       }
       itemId = item.id;
-      description = item.name + (item.purity ? ` (${item.purity})` : "");
+      description = item.name;
     } else if (customDesc.trim()) {
       description = customDesc.trim();
     } else {
