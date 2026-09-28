@@ -210,8 +210,8 @@ export default function InventoryPage() {
           </div>
         )}
         <p className="muted" style={{ marginTop: 8 }}>
-          CSV/Excel columns: Name, Category, Quantity, Selling Price, Cost Price, Notes.
-          All products are assigned serial SKU numbers (RR-0001, RR-0002, etc.) automatically.
+          CSV/Excel columns: SKU, Name, Category, Quantity, Selling Price, Cost Price, Notes.
+          If SKU is provided, it's used; otherwise a serial SKU (RR-0001, RR-0002, etc.) is assigned.
         </p>
         <p className="muted">{items.length} item types | {totalUnits} units in stock</p>
         <table>
