@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
-import { updateUser, deleteUser } from "../../../../../lib/auth";
+import { updateUser, deleteUser } from "../../../../../lib/auth-db";
 
 export async function PUT(request, { params }) {
   const id = parseInt(params.id, 10);

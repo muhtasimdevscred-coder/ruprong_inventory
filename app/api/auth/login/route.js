@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
-import { checkPassword, createSessionToken, ensureDefaultUser, SESSION_COOKIE_NAME } from "../../../../lib/auth";
+import { createSessionToken, SESSION_COOKIE_NAME } from "../../../../lib/auth";
+import { checkPassword, ensureDefaultUser } from "../../../../lib/auth-db";
 import { migrate } from "../../../../lib/migrate";
 
 export async function POST(request) {

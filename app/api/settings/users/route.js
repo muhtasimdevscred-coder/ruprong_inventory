@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
-import { getUsers, createUser } from "../../../../lib/auth";
+import { getUsers, createUser } from "../../../../lib/auth-db";
 
 export async function GET() {
   const users = await getUsers();
