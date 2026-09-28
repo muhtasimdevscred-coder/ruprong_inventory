@@ -4,27 +4,51 @@ import Papa from "papaparse";
 import { sql } from "../../../../lib/db";
 import { generateSku } from "../route";
 
-// Accepts { csv: "<raw csv text>" }.
+// Accepts { csv: "<raw csv text>" } or { excel: "<base64 xlsx data>" }.
 // Expected columns (case-insensitive, extra/missing optional columns are fine):
-//   SKU, Name, Category, Quantity, Selling Price, Cost Price, Weight (g), Purity, Stone, Notes
-// Row matching: if a row's SKU already exists in inventory, that item is
-// UPDATED (its Name/Category/Quantity/... are overwritten with the CSV's
-// values). If the SKU is blank or not found, a NEW item is created (auto
-// SKU if left blank). Nothing is deleted by an import.
+//   Name, Category, Quantity, Selling Price, Cost Price, Weight (g), Purity, Stone, Notes
+// SKU column is ignored — all products get serial SKU numbers (RR-0001, RR-0002, etc.)
 export async function POST(request) {
   const body = await request.json().catch(() => ({}));
   const csvText = body.csv;
-  if (!csvText || typeof csvText !== "string") {
-    return NextResponse.json({ error: "No CSV content received." }, { status: 400 });
+  const excelBase64 = body.excel;
+
+  if (!csvText && !excelBase64) {
+    return NextResponse.json({ error: "No file content received." }, { status: 400 });
   }
 
-  const parsed = Papa.parse(csvText.trim(), { header: true, skipEmptyLines: true });
-  if (parsed.errors && parsed.errors.length) {
-    const first = parsed.errors[0];
-    return NextResponse.json(
-      { error: `Could not read the CSV file (row ${first.row + 2}: ${first.message}).` },
-      { status: 400 }
-    );
+  let rows = [];
+
+  if (excelBase64) {
+    // Parse Excel file
+    try {
+      const XLSX = await import("xlsx");
+      const buffer = Buffer.from(excelBase64, "base64");
+      const workbook = XLSX.read(buffer, { type: "buffer" });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+    } catch (err) {
+      return NextResponse.json(
+        { error: `Could not read the Excel file: ${String(err.message || err)}` },
+        { status: 400 }
+      );
+    }
+  } else {
+    // Parse CSV file
+    const parsed = Papa.parse(csvText.trim(), { header: true, skipEmptyLines: true });
+    if (parsed.errors && parsed.errors.length) {
+      const first = parsed.errors[0];
+      return NextResponse.json(
+        { error: `Could not read the CSV file (row ${first.row + 2}: ${first.message}).` },
+        { status: 400 }
+      );
+    }
+    rows = parsed.data;
+  }
+
+  if (!rows.length) {
+    return NextResponse.json({ error: "No data rows found in the file." }, { status: 400 });
   }
 
   const norm = (row, keys) => {
@@ -36,12 +60,21 @@ export async function POST(request) {
     return undefined;
   };
 
+  // Get the current max SKU number to continue serial numbering
+  const existingSkus = await sql`SELECT sku FROM items WHERE sku LIKE 'RR-%'`;
+  let maxSkuNum = 0;
+  for (const r of existingSkus) {
+    const suffix = r.sku.slice(3);
+    if (/^\d+$/.test(suffix)) maxSkuNum = Math.max(maxSkuNum, parseInt(suffix, 10));
+  }
+
   let inserted = 0;
   let updated = 0;
   const errors = [];
+  let skuCounter = maxSkuNum;
 
-  for (let i = 0; i < parsed.data.length; i++) {
-    const row = parsed.data[i];
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
     const rowNum = i + 2; // account for header row, 1-indexed
     try {
       const name = (norm(row, ["name"]) || "").trim();
@@ -49,7 +82,11 @@ export async function POST(request) {
         errors.push({ row: rowNum, message: "Missing Name — row skipped." });
         continue;
       }
-      let sku = (norm(row, ["sku"]) || "").trim();
+
+      // Assign serial SKU to every product
+      skuCounter++;
+      const sku = `RR-${String(skuCounter).padStart(4, "0")}`;
+
       const category = (norm(row, ["category"]) || "").trim() || null;
       const quantity = parseInt(norm(row, ["quantity"]), 10) || 0;
       const price = parseFloat(norm(row, ["selling price", "price"])) || 0;
@@ -61,29 +98,14 @@ export async function POST(request) {
       const stone = (norm(row, ["stone"]) || "").trim() || null;
       const notes = (norm(row, ["notes"]) || "").trim() || null;
 
-      let existing = null;
-      if (sku) {
-        const found = await sql`SELECT id FROM items WHERE sku = ${sku}`;
-        existing = found[0] || null;
-      }
-
-      if (existing) {
-        await sql`
-          UPDATE items SET name=${name}, category=${category}, quantity=${quantity}, price=${price},
-            cost_price=${costPrice}, weight=${weight}, purity=${purity}, stone=${stone}, notes=${notes}
-          WHERE id=${existing.id}`;
-        updated++;
-      } else {
-        if (!sku) sku = await generateSku();
-        await sql`
-          INSERT INTO items (sku, name, category, quantity, price, cost_price, weight, purity, stone, notes)
-          VALUES (${sku}, ${name}, ${category}, ${quantity}, ${price}, ${costPrice}, ${weight}, ${purity}, ${stone}, ${notes})`;
-        inserted++;
-      }
+      await sql`
+        INSERT INTO items (sku, name, category, quantity, price, cost_price, weight, purity, stone, notes)
+        VALUES (${sku}, ${name}, ${category}, ${quantity}, ${price}, ${costPrice}, ${weight}, ${purity}, ${stone}, ${notes})`;
+      inserted++;
     } catch (err) {
       errors.push({ row: rowNum, message: String(err.message || err).slice(0, 150) });
     }
   }
 
-  return NextResponse.json({ inserted, updated, errors });
+  return NextResponse.json({ inserted, updated, errors, nextSku: skuCounter });
 }

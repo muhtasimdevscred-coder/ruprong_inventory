@@ -95,12 +95,24 @@ export default function InventoryPage() {
     setImporting(true);
     setImportSummary(null);
     try {
-      const text = await file.text();
-      const res = await fetch("/api/items/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ csv: text }),
-      });
+      const isExcel = /\.(xlsx|xls)$/i.test(file.name);
+      let res;
+      if (isExcel) {
+        const buffer = await file.arrayBuffer();
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+        res = await fetch("/api/items/import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ excel: base64 }),
+        });
+      } else {
+        const text = await file.text();
+        res = await fetch("/api/items/import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ csv: text }),
+        });
+      }
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || "Import failed.");
@@ -192,14 +204,15 @@ export default function InventoryPage() {
               Export {selected.size ? `Selected (${selected.size})` : "All"} to CSV
             </button>
             <label className="btn" style={{ marginBottom: 0 }}>
-              {importing ? "Importing..." : "Bulk Import CSV"}
-              <input ref={fileInputRef} type="file" accept=".csv" onChange={handleImportFile} style={{ display: "none" }} disabled={importing} />
+              {importing ? "Importing..." : "Bulk Import CSV / Excel"}
+              <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleImportFile} style={{ display: "none" }} disabled={importing} />
             </label>
           </div>
         </div>
         {importSummary && (
           <div className="msg msg-success" style={{ marginTop: 10 }}>
             Import done: {importSummary.inserted} added, {importSummary.updated} updated
+            {importSummary.nextSku ? ` — next SKU: RR-${String(importSummary.nextSku).padStart(4, "0")}` : ""}
             {importSummary.errors.length > 0 && `, ${importSummary.errors.length} row(s) skipped`}.
             {importSummary.errors.length > 0 && (
               <ul style={{ margin: "6px 0 0" }}>
@@ -211,8 +224,8 @@ export default function InventoryPage() {
           </div>
         )}
         <p className="muted" style={{ marginTop: 8 }}>
-          CSV columns: SKU, Name, Category, Quantity, Selling Price, Cost Price, Weight (g), Purity, Stone, Notes.
-          A row whose SKU already exists updates that item; otherwise a new item is created.
+          CSV/Excel columns: Name, Category, Quantity, Selling Price, Cost Price, Weight (g), Purity, Stone, Notes.
+          All products are assigned serial SKU numbers (RR-0001, RR-0002, etc.) automatically.
         </p>
         <p className="muted">{items.length} item types | {totalUnits} units in stock</p>
         <table>
