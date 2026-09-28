@@ -3,12 +3,15 @@ import { NextResponse } from "next/server";
 import Papa from "papaparse";
 import { sql } from "../../../../lib/db";
 import { generateSku } from "../route";
+import { migrate } from "../../../../lib/migrate";
 
 // Accepts { csv: "<raw csv text>" } or { excel: "<base64 xlsx data>" }.
 // Expected columns (case-insensitive, extra/missing optional columns are fine):
 //   Name, Category, Quantity, Selling Price, Cost Price, Notes
 // SKU column is ignored — all products get serial SKU numbers (RR-0001, RR-0002, etc.)
 export async function POST(request) {
+  await migrate();
+
   const body = await request.json().catch(() => ({}));
   const csvText = body.csv;
   const excelBase64 = body.excel;
