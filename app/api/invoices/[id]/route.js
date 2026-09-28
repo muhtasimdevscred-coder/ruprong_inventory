@@ -28,19 +28,16 @@ export async function PUT(request, { params }) {
   const deliveryCharge = parseFloat(body.delivery_charge) || 0;
 
   try {
-    const updated = await withTransaction(async (client) {
-      // Get current invoice items to restore stock
+    const updated = await withTransaction(async (client) => {
       const { rows: oldItems } = await client.query("SELECT * FROM invoice_items WHERE invoice_id = $1", [id]);
       if (!oldItems.length) throw new Error("Invoice not found.");
 
-      // Restore stock from old line items
       for (const li of oldItems) {
         if (li.item_id) {
           await client.query("UPDATE items SET quantity = quantity + $1 WHERE id = $2", [li.quantity, li.item_id]);
         }
       }
 
-      // Check stock for new line items
       const neededByItem = {};
       for (const li of lineItems) {
         if (li.item_id) {
@@ -61,7 +58,6 @@ export async function PUT(request, { params }) {
         lineCostById[itemId] = item.cost_price;
       }
 
-      // Calculate totals
       const subtotal = lineItems.reduce((sum, li) => sum + Number(li.quantity) * Number(li.unit_price), 0);
       let discountAmount = 0;
       if (discountType === "flat") discountAmount = discountValue;
@@ -69,7 +65,6 @@ export async function PUT(request, { params }) {
       discountAmount = Math.max(0, Math.min(discountAmount, subtotal));
       const total = subtotal - discountAmount + deliveryCharge;
 
-      // Update invoice
       const invoiceDate = body.invoice_date || new Date().toISOString().slice(0, 10);
       const { rows: invRows } = await client.query(
         `UPDATE invoices SET invoice_date = $1, customer_name = $2, customer_phone = $3,
@@ -82,10 +77,8 @@ export async function PUT(request, { params }) {
       );
       const invoice = invRows[0];
 
-      // Delete old line items
       await client.query("DELETE FROM invoice_items WHERE invoice_id = $1", [id]);
 
-      // Insert new line items and deduct stock
       for (const li of lineItems) {
         const qty = Number(li.quantity);
         const unitPrice = Number(li.unit_price);
@@ -120,7 +113,7 @@ export async function DELETE(request, { params }) {
           await client.query("UPDATE items SET quantity = quantity + $1 WHERE id = $2", [li.quantity, li.item_id]);
         }
       }
-      await client.query("DELETE FROM invoices WHERE id = $1", [id]); // cascades to invoice_items
+      await client.query("DELETE FROM invoices WHERE id = $1", [id]);
     });
     return NextResponse.json({ ok: true });
   } catch (err) {
