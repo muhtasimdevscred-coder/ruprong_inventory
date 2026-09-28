@@ -13,6 +13,26 @@ export async function generateSku() {
   return `RR-${String(maxN + 1).padStart(4, "0")}`;
 }
 
+export async function renumberSkus() {
+  const { rows: items } = await sql`SELECT id, sku FROM items ORDER BY id`;
+  const groups = {};
+  for (const item of items) {
+    if (!item.sku) continue;
+    const match = item.sku.match(/^([A-Za-z]+)(\d+)$/);
+    if (!match) continue;
+    const [, prefix, num] = match;
+    if (!groups[prefix]) groups[prefix] = [];
+    groups[prefix].push({ id: item.id, num: parseInt(num, 10) });
+  }
+  for (const [prefix, itemsInGroup] of Object.entries(groups)) {
+    itemsInGroup.sort((a, b) => a.num - b.num);
+    for (let i = 0; i < itemsInGroup.length; i++) {
+      const newSku = `${prefix}${i + 1}`;
+      await sql`UPDATE items SET sku = ${newSku} WHERE id = ${itemsInGroup[i].id}`;
+    }
+  }
+}
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const q = (searchParams.get("search") || "").trim();
@@ -49,6 +69,10 @@ export async function POST(request) {
       VALUES (${sku}, ${name}, ${body.category || null}, ${quantity}, ${price}, ${costPrice},
               ${body.notes || null}, ${body.image_url || null})
       RETURNING *`;
+
+    // Renumber SKUs serially within each prefix group
+    await renumberSkus();
+
     return NextResponse.json({ item: rows[0] });
   } catch (err) {
     if (String(err.message || err).includes("duplicate key")) {
