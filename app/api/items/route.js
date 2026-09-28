@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { sql } from "../../../lib/db";
+import { migrate } from "../../../lib/migrate";
 
 export async function generateSku() {
   const rows = await sql`SELECT sku FROM items WHERE sku LIKE 'RR-%'`;
@@ -29,6 +30,7 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  await migrate();
   const body = await request.json().catch(() => ({}));
   const name = (body.name || "").trim();
   if (!name) {
