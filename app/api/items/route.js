@@ -48,9 +48,11 @@ export async function GET(request) {
     rows = await sql`
       SELECT * FROM items
       WHERE name ILIKE ${like} OR sku ILIKE ${like} OR category ILIKE ${like}
-      ORDER BY name`;
+      ORDER BY substring(sku from '^[A-Za-z]+'), CAST(substring(sku from '[0-9]+$') AS INTEGER)`;
   } else {
-    rows = await sql`SELECT * FROM items ORDER BY name`;
+    rows = await sql`
+      SELECT * FROM items
+      ORDER BY substring(sku from '^[A-Za-z]+'), CAST(substring(sku from '[0-9]+$') AS INTEGER)`;
   }
   return NextResponse.json({ items: rows });
 }
