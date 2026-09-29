@@ -198,7 +198,7 @@ export default function InventoryPage() {
         {importSummary && (
           <div className="msg msg-success" style={{ marginTop: 10 }}>
             Import done: {importSummary.inserted} added, {importSummary.updated} updated
-            {importSummary.nextSku ? ` — next SKU: RR-${String(importSummary.nextSku).padStart(4, "0")}` : ""}
+            {importSummary.nextSku ? ` — next SKU: BN${importSummary.nextSku}` : ""}
             {importSummary.errors.length > 0 && `, ${importSummary.errors.length} row(s) skipped`}.
             {importSummary.errors.length > 0 && (
               <ul style={{ margin: "6px 0 0" }}>
@@ -211,7 +211,7 @@ export default function InventoryPage() {
         )}
         <p className="muted" style={{ marginTop: 8 }}>
           CSV/Excel columns: SKU, Name, Category, Quantity, Selling Price, Cost Price, Notes.
-          If SKU is provided, it's used; otherwise a serial SKU (RR-0001, RR-0002, etc.) is assigned.
+          If SKU is provided, it's used; otherwise a serial SKU (BN1, BN2, etc.) is assigned.
         </p>
         <p className="muted">{items.length} item types | {totalUnits} units in stock</p>
         <table>

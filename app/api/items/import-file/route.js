@@ -37,10 +37,10 @@ export async function POST(request) {
     return undefined;
   };
 
-  const existingSkus = await sql`SELECT sku FROM items WHERE sku LIKE 'RR-%'`;
+  const existingSkus = await sql`SELECT sku FROM items WHERE sku LIKE 'BN%'`;
   let maxSkuNum = 0;
   for (const r of existingSkus) {
-    const suffix = r.sku.slice(3);
+    const suffix = r.sku.slice(2);
     if (/^\d+$/.test(suffix)) maxSkuNum = Math.max(maxSkuNum, parseInt(suffix, 10));
   }
 
@@ -61,7 +61,7 @@ export async function POST(request) {
       let sku = (norm(row, ["sku"]) || "").trim();
       if (!sku) {
         skuCounter++;
-        sku = `RR-${String(skuCounter).padStart(4, "0")}`;
+        sku = `BN${skuCounter}`;
       }
 
       const category = (norm(row, ["category"]) || "").trim() || null;

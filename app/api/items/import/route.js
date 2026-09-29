@@ -8,7 +8,7 @@ import { migrate } from "../../../../lib/migrate";
 // Accepts { csv: "<raw csv text>" } or { excel: "<base64 xlsx data>" }.
 // Expected columns (case-insensitive, extra/missing optional columns are fine):
 //   SKU, Name, Category, Quantity, Selling Price, Cost Price, Notes
-// If SKU is provided, it's used; otherwise a serial SKU (RR-0001, RR-0002, etc.) is assigned.
+// If SKU is provided, it's used; otherwise a serial SKU (BN1, BN2, etc.) is assigned.
 export async function POST(request) {
   await migrate();
 
@@ -61,10 +61,10 @@ export async function POST(request) {
     return undefined;
   };
 
-  const existingSkus = await sql`SELECT sku FROM items WHERE sku LIKE 'RR-%'`;
+  const existingSkus = await sql`SELECT sku FROM items WHERE sku LIKE 'BN%'`;
   let maxSkuNum = 0;
   for (const r of existingSkus) {
-    const suffix = r.sku.slice(3);
+    const suffix = r.sku.slice(2);
     if (/^\d+$/.test(suffix)) maxSkuNum = Math.max(maxSkuNum, parseInt(suffix, 10));
   }
 
@@ -86,7 +86,7 @@ export async function POST(request) {
       let sku = (norm(row, ["sku"]) || "").trim();
       if (!sku) {
         skuCounter++;
-        sku = `RR-${String(skuCounter).padStart(4, "0")}`;
+        sku = `BN${skuCounter}`;
       }
 
       const category = (norm(row, ["category"]) || "").trim() || null;

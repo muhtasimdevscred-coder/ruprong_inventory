@@ -4,13 +4,13 @@ import { sql, withTransaction } from "../../../lib/db";
 import { migrate } from "../../../lib/migrate";
 
 export async function generateSku() {
-  const rows = await sql`SELECT sku FROM items WHERE sku LIKE 'RR-%'`;
+  const rows = await sql`SELECT sku FROM items WHERE sku LIKE 'BN%'`;
   let maxN = 0;
   for (const r of rows) {
-    const suffix = r.sku.slice(3);
+    const suffix = r.sku.slice(2);
     if (/^\d+$/.test(suffix)) maxN = Math.max(maxN, parseInt(suffix, 10));
   }
-  return `RR-${String(maxN + 1).padStart(4, "0")}`;
+  return `BN${maxN + 1}`;
 }
 
 export async function renumberSkus() {
