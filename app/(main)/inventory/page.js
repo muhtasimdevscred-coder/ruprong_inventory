@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 const CATEGORIES = ["Ring", "Necklace", "Earring", "Bracelet", "Bangle", "Anklet", "Pendant", "Chain", "Set", "Other"];
 const EMPTY_FORM = {
   id: null, sku: "", name: "", category: "", quantity: "0", price: "",
-  cost_price: "", notes: "",
+  cost_price: "", notes: "", image_url: "",
 };
 
 export default function InventoryPage() {
@@ -16,7 +16,10 @@ export default function InventoryPage() {
   const [success, setSuccess] = useState("");
   const [importSummary, setImportSummary] = useState(null);
   const [importing, setImporting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState(null);
   const fileInputRef = useRef(null);
+  const imageInputRef = useRef(null);
 
   const load = useCallback(async (q) => {
     const res = await fetch(`/api/items?search=${encodeURIComponent(q || "")}`);
@@ -31,6 +34,26 @@ export default function InventoryPage() {
     setTimeout(() => setter(""), 4000);
   }
 
+  async function handleImageUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || "Upload failed."); return; }
+      setForm((prev) => ({ ...prev, image_url: data.url }));
+      flash(setSuccess, "Image uploaded.");
+    } catch {
+      setError("Upload failed.");
+    } finally {
+      setUploading(false);
+      if (imageInputRef.current) imageInputRef.current.value = "";
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
@@ -39,6 +62,7 @@ export default function InventoryPage() {
       quantity: parseInt(form.quantity, 10) || 0, price: parseFloat(form.price) || 0,
       cost_price: form.cost_price === "" ? null : parseFloat(form.cost_price),
       notes: form.notes,
+      image_url: form.image_url || null,
     };
     const isEdit = !!form.id;
     const res = await fetch(isEdit ? `/api/items/${form.id}` : "/api/items", {
@@ -62,6 +86,7 @@ export default function InventoryPage() {
       quantity: String(item.quantity), price: String(item.price),
       cost_price: item.cost_price == null ? "" : String(item.cost_price),
       notes: item.notes || "",
+      image_url: item.image_url || "",
     });
   }
 
@@ -172,6 +197,23 @@ export default function InventoryPage() {
               <input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} style={{ width: "100%" }} />
             </div>
           </div>
+          <div className="row" style={{ marginTop: 10, alignItems: "flex-end" }}>
+            <div className="field">
+              <label>Product Image</label>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <label className="btn" style={{ marginBottom: 0, cursor: "pointer" }}>
+                  {uploading ? "Uploading..." : "Upload Image"}
+                  <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={handleImageUpload} style={{ display: "none" }} disabled={uploading} />
+                </label>
+                {form.image_url && (
+                  <>
+                    <img src={form.image_url} alt="Preview" style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 4, cursor: "pointer", border: "1px solid var(--border)" }} onClick={() => setLightboxImage(form.image_url)} />
+                    <button type="button" className="btn btn-sm btn-danger" onClick={() => setForm({ ...form, image_url: "" })}>Remove</button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
           <div className="row" style={{ marginTop: 14 }}>
             <button type="submit" className="btn btn-primary">{form.id ? "Update Item" : "Add Item"}</button>
             {form.id && <button type="button" className="btn" onClick={() => setForm(EMPTY_FORM)}>Cancel Edit</button>}
@@ -217,7 +259,7 @@ export default function InventoryPage() {
         <table>
           <thead>
             <tr>
-              <th></th><th>SKU</th><th>Name</th><th>Category</th><th>Qty</th>
+              <th></th><th>Image</th><th>SKU</th><th>Name</th><th>Category</th><th>Qty</th>
               <th>Price</th><th>Cost</th><th></th>
             </tr>
           </thead>
@@ -225,6 +267,13 @@ export default function InventoryPage() {
             {items.map((it) => (
               <tr key={it.id} className={it.quantity <= 3 ? "low-stock" : ""}>
                 <td><input type="checkbox" checked={selected.has(it.id)} onChange={() => toggleSelect(it.id)} /></td>
+                <td>
+                  {it.image_url ? (
+                    <img src={it.image_url} alt={it.name} style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 4, cursor: "pointer", border: "1px solid var(--border)" }} onClick={() => setLightboxImage(it.image_url)} />
+                  ) : (
+                    <div style={{ width: 40, height: 40, borderRadius: 4, background: "#f4f0ea", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: "#bbb" }}>—</div>
+                  )}
+                </td>
                 <td>{it.sku}</td>
                 <td>{it.name}</td>
                 <td>{it.category}</td>
@@ -238,11 +287,41 @@ export default function InventoryPage() {
               </tr>
             ))}
             {items.length === 0 && (
-              <tr><td colSpan={8} className="muted" style={{ padding: 20, textAlign: "center" }}>No items yet.</td></tr>
+              <tr><td colSpan={9} className="muted" style={{ padding: 20, textAlign: "center" }}>No items yet.</td></tr>
             )}
           </tbody>
         </table>
       </div>
+
+      {lightboxImage && (
+        <div
+          style={{
+            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(0,0,0,0.85)", zIndex: 1000,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "zoom-out",
+          }}
+          onClick={() => setLightboxImage(null)}
+        >
+          <img
+            src={lightboxImage}
+            alt="Product"
+            style={{ maxWidth: "90vw", maxHeight: "90vh", objectFit: "contain", borderRadius: 8 }}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            style={{
+              position: "absolute", top: 20, right: 20,
+              background: "rgba(255,255,255,0.2)", border: "none", color: "#fff",
+              fontSize: 24, cursor: "pointer", borderRadius: "50%", width: 40, height: 40,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+            onClick={() => setLightboxImage(null)}
+          >
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   );
 }
