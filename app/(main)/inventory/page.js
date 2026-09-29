@@ -34,24 +34,35 @@ export default function InventoryPage() {
     setTimeout(() => setter(""), 4000);
   }
 
-  async function handleImageUpload(e) {
+  function handleImageUpload(e) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error || "Upload failed."); return; }
-      setForm((prev) => ({ ...prev, image_url: data.url }));
-      flash(setSuccess, "Image uploaded.");
-    } catch {
-      setError("Upload failed.");
-    } finally {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const dataUrl = reader.result;
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dataUrl }),
+        });
+        const data = await res.json();
+        if (!res.ok) { setError(data.error || "Upload failed."); return; }
+        setForm((prev) => ({ ...prev, image_url: data.url }));
+        flash(setSuccess, "Image uploaded.");
+      } catch {
+        setError("Upload failed.");
+      } finally {
+        setUploading(false);
+        if (imageInputRef.current) imageInputRef.current.value = "";
+      }
+    };
+    reader.onerror = () => {
+      setError("Failed to read file.");
       setUploading(false);
-      if (imageInputRef.current) imageInputRef.current.value = "";
-    }
+    };
+    reader.readAsDataURL(file);
   }
 
   async function handleSubmit(e) {
