@@ -61,7 +61,8 @@ export async function GET(request) {
     return NextResponse.json({ items: rows });
   } catch (err) {
     console.error("GET /api/items error:", err.message);
-    return NextResponse.json({ items: [], error: "Failed to load items" });
+    // Return empty items array so the page still renders
+    return NextResponse.json({ items: [] });
   }
 }
 
