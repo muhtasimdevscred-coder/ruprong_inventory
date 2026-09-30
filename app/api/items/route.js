@@ -38,8 +38,6 @@ export async function renumberSkus() {
 }
 
 export async function GET(request) {
-  await migrate();
-  await renumberSkus();
   const { searchParams } = new URL(request.url);
   const q = (searchParams.get("search") || "").trim();
   let rows;
