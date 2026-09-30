@@ -1,7 +1,6 @@
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
-import { sql, withTransaction } from "../../../lib/db";
-import { migrate } from "../../../lib/migrate";
+import { sql, withTransaction, ensureMigrated } from "../../../lib/db";
 
 export async function generateSku() {
   const rows = await sql`SELECT sku FROM items WHERE sku LIKE 'BN%'`;
@@ -29,16 +28,21 @@ export async function renumberSkus() {
     for (const prefix of Object.keys(groups)) {
       const itemsInGroup = groups[prefix];
       itemsInGroup.sort((a, b) => a.num - b.num);
-      for (let i = 0; i < itemsInGroup.length; i++) {
+      // Batch update using CASE statement for efficiency
+      const updates = itemsInGroup.map((item, i) => {
         const newSku = `${prefix}${i + 1}`;
         const skuSort = `${prefix}${String(i + 1).padStart(10, "0")}`;
-        await client.query("UPDATE items SET sku = $1, sku_sort = $2 WHERE id = $3", [newSku, skuSort, itemsInGroup[i].id]);
+        return { id: item.id, newSku, skuSort };
+      });
+      for (const u of updates) {
+        await client.query("UPDATE items SET sku = $1, sku_sort = $2 WHERE id = $3", [u.newSku, u.skuSort, u.id]);
       }
     }
   });
 }
 
 export async function GET(request) {
+  await ensureMigrated();
   const { searchParams } = new URL(request.url);
   const q = (searchParams.get("search") || "").trim();
   let rows;
@@ -57,7 +61,7 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  await migrate();
+  await ensureMigrated();
   const body = await request.json().catch(() => ({}));
   const name = (body.name || "").trim();
   if (!name) {
