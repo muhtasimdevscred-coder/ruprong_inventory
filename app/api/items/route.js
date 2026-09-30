@@ -31,7 +31,8 @@ export async function renumberSkus() {
       itemsInGroup.sort((a, b) => a.num - b.num);
       for (let i = 0; i < itemsInGroup.length; i++) {
         const newSku = `${prefix}${i + 1}`;
-        await client.query("UPDATE items SET sku = $1 WHERE id = $2", [newSku, itemsInGroup[i].id]);
+        const skuSort = `${prefix}${String(i + 1).padStart(10, "0")}`;
+        await client.query("UPDATE items SET sku = $1, sku_sort = $2 WHERE id = $3", [newSku, skuSort, itemsInGroup[i].id]);
       }
     }
   });
@@ -46,11 +47,11 @@ export async function GET(request) {
     rows = await sql`
       SELECT * FROM items
       WHERE name ILIKE ${like} OR sku ILIKE ${like} OR category ILIKE ${like}
-      ORDER BY substring(sku from '^[A-Za-z]+'), CAST(substring(sku from '[0-9]+$') AS INTEGER)`;
+      ORDER BY sku_sort`;
   } else {
     rows = await sql`
       SELECT * FROM items
-      ORDER BY substring(sku from '^[A-Za-z]+'), CAST(substring(sku from '[0-9]+$') AS INTEGER)`;
+      ORDER BY sku_sort`;
   }
   return NextResponse.json({ items: rows });
 }
@@ -69,10 +70,14 @@ export async function POST(request) {
   const price = Number.isFinite(body.price) ? body.price : parseFloat(body.price) || 0;
   const costPrice = body.cost_price === "" || body.cost_price == null ? null : parseFloat(body.cost_price);
 
+  // Generate sku_sort for the new item
+  const match = sku.match(/^([A-Za-z]+)(\d+)$/);
+  const skuSort = match ? `${match[1]}${match[2].padStart(10, "0")}` : sku;
+
   try {
     const rows = await sql`
-      INSERT INTO items (sku, name, category, quantity, price, cost_price, notes, image_url)
-      VALUES (${sku}, ${name}, ${body.category || null}, ${quantity}, ${price}, ${costPrice},
+      INSERT INTO items (sku, sku_sort, name, category, quantity, price, cost_price, notes, image_url)
+      VALUES (${sku}, ${skuSort}, ${name}, ${body.category || null}, ${quantity}, ${price}, ${costPrice},
               ${body.notes || null}, ${body.image_url || null})
       RETURNING *`;
 
