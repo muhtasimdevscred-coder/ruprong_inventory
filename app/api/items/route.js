@@ -42,22 +42,27 @@ export async function renumberSkus() {
 }
 
 export async function GET(request) {
-  await ensureMigrated();
-  const { searchParams } = new URL(request.url);
-  const q = (searchParams.get("search") || "").trim();
-  let rows;
-  if (q) {
-    const like = `%${q}%`;
-    rows = await sql`
-      SELECT * FROM items
-      WHERE name ILIKE ${like} OR sku ILIKE ${like} OR category ILIKE ${like}
-      ORDER BY sku_sort`;
-  } else {
-    rows = await sql`
-      SELECT * FROM items
-      ORDER BY sku_sort`;
+  try {
+    await ensureMigrated();
+    const { searchParams } = new URL(request.url);
+    const q = (searchParams.get("search") || "").trim();
+    let rows;
+    if (q) {
+      const like = `%${q}%`;
+      rows = await sql`
+        SELECT * FROM items
+        WHERE name ILIKE ${like} OR sku ILIKE ${like} OR category ILIKE ${like}
+        ORDER BY sku_sort`;
+    } else {
+      rows = await sql`
+        SELECT * FROM items
+        ORDER BY sku_sort`;
+    }
+    return NextResponse.json({ items: rows });
+  } catch (err) {
+    console.error("GET /api/items error:", err.message);
+    return NextResponse.json({ items: [], error: "Failed to load items" });
   }
-  return NextResponse.json({ items: rows });
 }
 
 export async function POST(request) {
