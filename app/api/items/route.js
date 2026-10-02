@@ -28,7 +28,6 @@ export async function renumberSkus() {
     for (const prefix of Object.keys(groups)) {
       const itemsInGroup = groups[prefix];
       itemsInGroup.sort((a, b) => a.num - b.num);
-      // Batch update using CASE statement for efficiency
       const updates = itemsInGroup.map((item, i) => {
         const newSku = `${prefix}${i + 1}`;
         const skuSort = `${prefix}${String(i + 1).padStart(10, "0")}`;
@@ -43,7 +42,6 @@ export async function renumberSkus() {
 
 export async function GET(request) {
   try {
-    await ensureMigrated();
     const { searchParams } = new URL(request.url);
     const q = (searchParams.get("search") || "").trim();
     let rows;
@@ -61,8 +59,7 @@ export async function GET(request) {
     return NextResponse.json({ items: rows });
   } catch (err) {
     console.error("GET /api/items error:", err.message);
-    // Return empty items array so the page still renders
-    return NextResponse.json({ items: [] });
+    return NextResponse.json({ error: "Database error", details: err.message }, { status: 500 });
   }
 }
 
@@ -80,7 +77,6 @@ export async function POST(request) {
   const price = Number.isFinite(body.price) ? body.price : parseFloat(body.price) || 0;
   const costPrice = body.cost_price === "" || body.cost_price == null ? null : parseFloat(body.cost_price);
 
-  // Generate sku_sort for the new item
   const match = sku.match(/^([A-Za-z]+)(\d+)$/);
   const skuSort = match ? `${match[1]}${match[2].padStart(10, "0")}` : sku;
 
@@ -91,7 +87,6 @@ export async function POST(request) {
               ${body.notes || null}, ${body.image_url || null})
       RETURNING *`;
 
-    // Renumber SKUs serially within each prefix group
     await renumberSkus();
 
     return NextResponse.json({ item: rows[0] });
