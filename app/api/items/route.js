@@ -2,30 +2,6 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { sql, withTransaction } from "../../../lib/db";
 
-// Run once to add sku_sort column and index
-let initialized = false;
-async function ensureSetup() {
-  if (initialized) return;
-  try {
-    await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS sku_sort TEXT`;
-    await sql`CREATE INDEX IF NOT EXISTS idx_items_sku_sort ON items(sku_sort)`;
-    // Populate sku_sort for existing items
-    await sql`
-      UPDATE items SET sku_sort = 
-        CASE 
-          WHEN sku ~ '^[A-Za-z]+[0-9]+$' THEN
-            substring(sku from '^[A-Za-z]+') || 
-            lpad(substring(sku from '[0-9]+$'), 10, '0')
-          ELSE sku
-        END
-      WHERE sku_sort IS NULL AND sku IS NOT NULL
-    `;
-    initialized = true;
-  } catch (err) {
-    console.error("Setup error:", err.message);
-  }
-}
-
 export async function renumberSkus() {
   await withTransaction(async (client) => {
     const { rows: items } = await client.query("SELECT id, sku FROM items ORDER BY id");
@@ -53,7 +29,6 @@ export async function renumberSkus() {
 
 export async function GET(request) {
   try {
-    await ensureSetup();
     const { searchParams } = new URL(request.url);
     const q = (searchParams.get("search") || "").trim();
     let rows;
@@ -74,7 +49,6 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  await ensureSetup();
   const body = await request.json().catch(() => ({}));
   const name = (body.name || "").trim();
   if (!name) {
@@ -86,7 +60,6 @@ export async function POST(request) {
   const costPrice = body.cost_price === "" || body.cost_price == null ? null : parseFloat(body.cost_price);
   const sku = (body.sku || "").trim() || null;
 
-  // Generate sku_sort for the new item
   const match = sku ? sku.match(/^([A-Za-z]+)(\d+)$/) : null;
   const skuSort = match ? `${match[1]}${match[2].padStart(10, "0")}` : sku;
 
@@ -97,7 +70,6 @@ export async function POST(request) {
               ${body.notes || null}, ${body.image_url || null})
       RETURNING *`;
 
-    // Renumber SKUs serially within each prefix group
     await renumberSkus();
 
     return NextResponse.json({ item: rows[0] });

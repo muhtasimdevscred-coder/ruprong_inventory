@@ -1,10 +1,8 @@
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { sql } from "../../../../lib/db";
-import { migrate } from "../../../../lib/migrate";
 
 export async function PUT(request, { params }) {
-  await migrate();
   const id = parseInt(params.id, 10);
   const body = await request.json().catch(() => ({}));
   const name = (body.name || "").trim();
