@@ -112,7 +112,6 @@ async function main() {
       VALUES ('TEST01', 'TEST0000000001', 'Test Item', 'Test', 1, 100, 80, 'test', null)
       RETURNING *
     `);
-    // Clean up
     await client.query("DELETE FROM items WHERE sku = 'TEST01'");
   }));
 
@@ -145,6 +144,45 @@ async function main() {
       promises.push(client.query('SELECT COUNT(*) FROM items'));
     }
     await Promise.all(promises);
+  }));
+
+  // Test 16: Cache simulation - repeated queries should be faster
+  results.push(await test('Cache simulation (5 repeated queries)', async () => {
+    for (let i = 0; i < 5; i++) {
+      await client.query('SELECT * FROM items ORDER BY sku_sort LIMIT 10');
+    }
+  }));
+
+  // Test 17: Tab switching simulation (alternate between items and invoices)
+  results.push(await test('Tab switching simulation (10 alternations)', async () => {
+    for (let i = 0; i < 10; i++) {
+      await client.query('SELECT * FROM items ORDER BY sku_sort LIMIT 10');
+      await client.query('SELECT * FROM invoices ORDER BY id DESC LIMIT 10');
+    }
+  }));
+
+  // Test 18: Invoice search
+  results.push(await test('Invoice search by customer name', async () => {
+    const { rows } = await client.query("SELECT * FROM invoices WHERE customer_name ILIKE '%Sample%' LIMIT 5");
+  }));
+
+  // Test 19: Invoice search by invoice number
+  results.push(await test('Invoice search by invoice number', async () => {
+    const { rows } = await client.query("SELECT * FROM invoices WHERE invoice_no ILIKE '%RR-INV%' LIMIT 5");
+  }));
+
+  // Test 20: Complex report query
+  results.push(await test('Complex report query', async () => {
+    const { rows } = await client.query(`
+      SELECT i.invoice_no, i.customer_name, i.total, 
+             COUNT(ii.id) as item_count,
+             SUM(ii.quantity) as total_qty
+      FROM invoices i
+      LEFT JOIN invoice_items ii ON ii.invoice_id = i.id
+      GROUP BY i.id, i.invoice_no, i.customer_name, i.total
+      ORDER BY i.id DESC
+      LIMIT 10
+    `);
   }));
 
   // Summary

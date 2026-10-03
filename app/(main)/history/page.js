@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
+import { cachedFetch, invalidateCache } from "../../../lib/client-cache";
 
 export default function HistoryPage() {
   const [invoices, setInvoices] = useState([]);
@@ -12,7 +13,7 @@ export default function HistoryPage() {
   const [editError, setEditError] = useState("");
 
   const load = useCallback(async (q) => {
-    const res = await fetch(`/api/invoices?search=${encodeURIComponent(q || "")}`);
+    const res = await cachedFetch(`/api/invoices?search=${encodeURIComponent(q || "")}`);
     const data = await res.json();
     setInvoices(data.invoices || []);
   }, []);

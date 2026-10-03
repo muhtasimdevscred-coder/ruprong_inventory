@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback, useRef } from "react";
+import { cachedFetch, invalidateCache } from "../../../lib/client-cache";
 
 const CATEGORIES = ["Ring", "Necklace", "Earring", "Bracelet", "Bangle", "Anklet", "Pendant", "Chain", "Set", "Other"];
 const EMPTY_FORM = {
@@ -22,7 +23,7 @@ export default function InventoryPage() {
   const imageInputRef = useRef(null);
 
   const load = useCallback(async (q) => {
-    const res = await fetch(`/api/items?search=${encodeURIComponent(q || "")}`);
+    const res = await cachedFetch(`/api/items?search=${encodeURIComponent(q || "")}`);
     const data = await res.json();
     setItems(data.items || []);
   }, []);
